@@ -8,6 +8,10 @@ from bs4 import BeautifulSoup
 # 理论上走api.bilibili.com这样的官方API更好
 # 但是嘛...按自己的想法来也不是不行（笑）
 
+# 另外必须说明的是，该模块对B站网页结构的处理依然不完善！！！
+# 有可能会抓取到番剧、广告等暂时无法处理的数据
+# 此时后台会报错（虽然错误会被忽略掉，不会影响机器人继续运行）
+
 requestHeaders = {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': '*/*',
