@@ -1,0 +1,5 @@
+# 此行填你的机器人的QQ号（如1234567890）
+# 此行填你使用的LLM API地址（如https://open.bigmodel.cn/api/paas/v4/chat/completions）
+# 此行填你的LLM API KEY（如7sf7sdaf23ug37ge3387h3287ftf233r87ui237——此处是手滚键盘出来的，莫当真）
+# 此行填你使用的LLM模型（如glm-4.7-flash）
+# 记得删除所有注释！
