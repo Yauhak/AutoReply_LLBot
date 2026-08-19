@@ -2,7 +2,7 @@
 
 一个基于 [LuckyLilliaBot（LLBot）](https://github.com/LLOneBot/LuckyLilliaBot) 框架和大语言模型（LLM）API 的 QQ 自动回复机器人。
 
-机器人的人设是一只名叫「小鲸鱼」的鲸鱼娘女仆，性格温柔活泼。它可以陪你聊天、帮你点歌、点赞、发随机美图，所有命令以 `#` 开头，无需 @ 机器人也能生效。
+机器人的人设是一只名叫「小鲸鱼」的鲸鱼娘女仆，性格温柔活泼。它可以陪你聊天、帮你点歌、点赞、发随机美图。所有命令以 `#` 开头，无需 @ 机器人也能生效。
 
 > 本项目最初使用 DeepSeek 的 API 进行测试，所以人设名取了「小鲸鱼」。名字和人设都可以随意修改（见 `AutoReply.py` 中的 `SYSTEM_PROMPT`）。
 
@@ -22,7 +22,7 @@
 
 - 每个会话（群聊 / 私聊）独立保存上下文，最多保留 **50 轮**，用满后自动重置（会提示「本轮对话已结束，小鲸鱼已重置」）。
 - 每次向 LLM 发送时只携带最近 **30 条**消息，避免超出模型上下文长度。
-- 回复限制在 **256 字**以内，只输出纯文本，不使用 Markdown。
+- 回复软性限制在 **256 字**以内，只输出纯文本，不使用 Markdown（PS. 悄咪咪说一句，GLM-4-Flash不听指挥，回复偶尔会超过256字，但不会超过太多）。
 
 ---
 
@@ -52,7 +52,7 @@ QQ 客户端
 
 - Python 3.8+（代码使用 `sys.stdout.reconfigure` 等特性，推荐 Python 3.8 以上）
 - [LuckyLilliaBot（LLBot）](https://github.com/LLOneBot/LuckyLilliaBot) v8.1.8（代码按此版本编写），以及一个登录状态的 QQ 客户端
-- 一个 **OpenAI 兼容** 的 LLM API（智谱 GLM、DeepSeek、OpenAI 等均可）
+- 一个 **符合OpenAI API规范** 的 LLM API（智谱 GLM、DeepSeek、OpenAI 等均可）
 
 ### Python 依赖
 
@@ -66,6 +66,9 @@ pip install requests beautifulsoup4
 
 ## 安装与配置
 
+### 0. 获取AutoReply脚本文件
+请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases/tag/SourceCode) 下载压缩包并解压到任意文件夹下
+
 ### 1. 安装并启动 LLBot
 
 1. 从 [LuckyLilliaBot Releases](https://github.com/LLOneBot/LuckyLilliaBot/releases) 下载 v8.1.8 并安装（Windows 用户可直接使用桌面版 / CLI 版）。
@@ -74,7 +77,7 @@ pip install requests beautifulsoup4
 
 ### 2. 配置 `Config.txt`
 
-在项目根目录创建（或修改）`Config.txt`，**共四行，每行一项，顺序固定**：
+在AutoReply项目根目录创建（或直接修改）`Config.txt`，**共四行，每行一项，顺序固定**：
 
 ```text
 BotQQ
@@ -86,25 +89,25 @@ LLM_MODEL
 | 行号 | 配置项 | 示例 | 说明 |
 | ---- | ------ | ---- | ---- |
 | 1 | 机器人 QQ 号 | `1234567890` | 用于判断消息是否 @ 了机器人 |
-| 2 | LLM API 地址 | `https://open.bigmodel.cn/api/paas/v4/chat/completions` | 智谱GLM的 Chat Completions 接口 |
+| 2 | LLM API 地址 | `https://open.bigmodel.cn/api/paas/v4/chat/completions` | 智谱 GLM-4 的 Chat Completions 接口 |
 | 3 | API 密钥 | `sk-xxxx...` | 对应平台的 API Key |
 | 4 | 模型名称 | `glm-4-flash` | 模型 ID，取决于你使用的平台 |
 
 配置示例（以智谱 GLM 为例）：
 
 ```text
-3948098306
+1234567890
 https://open.bigmodel.cn/api/paas/v4/chat/completions
 你的API密钥
 glm-4-flash
 ```
 
-> ⚠️ **注意**：`Config.txt` 包含你的 API 密钥，请勿提交到 Git 仓库或分享给他人。建议将其加入 `.gitignore`。
+> ⚠️ **注意**：`Config.txt` 包含你的 API 密钥，请勿提交到 Git 仓库或分享给他人。
 
 ### 3. 启动机器人
 
 ```bash
-python AutoReply.py
+python <绝对路径>AutoReply.py
 ```
 
 启动后终端会显示机器人 QQ 号、模型名称、轮数上限和上下文目录，随后开始监听消息。
@@ -170,13 +173,13 @@ E:\QQBot\
 | ---- | ------ | ---- |
 | `SYSTEM_PROMPT` | 小鲸鱼人设 | 系统提示词，决定机器人性格 |
 | `MAX_TURNS` | 50 | 每会话最大轮数，用满自动重置 |
-| `MAX_LEN` | 256 | 单次回复最大字数（写入人设提示词） |
+| `MAX_LEN` | 256 | 单次回复最大字数（写入人设提示词。无法硬性确保回复字数小于 MAX_LEN） |
 | `HIST_KEEP` | 30 | 每次请求携带的最近消息条数 |
 | `LLM_TIMEOUT` | 60 | LLM 请求超时（秒） |
 
 ### BiliCatcher.py — 点歌
 
-- 基于对 B 站网页结构的逆向分析实现的爬虫（作者自称「按自己的想法来」），并未使用官方 API，因此 B 站改版后可能需要维护。
+- 基于对 B 站网页结构的逆向分析实现的爬虫，并未使用官方 API，因此 B 站改版后可能需要维护。
 - `searchVideos()`：在 `search.bilibili.com` 搜索，解析页面中的视频链接与标题（跳过含 `space` 的链接，并去重）。
 - `getAudioUrl()`：从视频播放页的 `window.__playinfo__` JSON 中提取 DASH 音频流地址，优先选择 `mcdn` 域名（校验宽松）。
 - `downloadSong()`：下载第一个搜索结果的音频，保存为 `TempMusic\<标题>.m4a`。
