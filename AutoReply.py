@@ -4,14 +4,16 @@ import re
 import socket
 import sys
 import time
+import requests
 import urllib.request
 from pathlib import Path
 import RndPic
 import BiliCatcher
+import weather
+import HZYSAPI
 
 """
-    群聊 @<机器人账号><消息> 或私聊直接发送 <消息>：调用LLM进行对话，每个群聊、私聊都视为不同的会话，最多保留50轮上下文，超过范围自动重置
-    #功能：打印可用的指令（功能）
+    @<机器人账号><消息>：调用LLM进行对话，每个群聊、私聊都视为不同的会话，最多保留50轮上下文，超过范围自动重置
     #点赞：给请求者的QQ点赞
     #点歌 <关键词>：从B站爬取相关音频并返回（可能爬到奇奇怪怪的东西）
     #随机美图：从nekosapi随机获取一张“安全的”图片
@@ -22,6 +24,7 @@ import BiliCatcher
 # 框架原地址：https://github.com/LLOneBot/LuckyLilliaBot（骗你的，不安装LLBot机器人是运行不了的）
 
 # 从 Config.txt 读取配置
+
 configPath = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Config.txt")
 if not os.path.exists(configPath):
     print("Config.txt 不存在，请创建并填写四行：BotQQ, LLM_API, LLM_KEY, LLM_MODEL")
@@ -46,6 +49,11 @@ LLM_TIMEOUT = 60
 MAX_TURNS = 50
 MAX_LEN = 256
 HIST_KEEP = 30
+
+# MAX_TURNS表示最多保存多少轮历史对话记录
+# MAX_LEN表示（软性）限制的LLM的回复长度——回复太长了的话烧token不会很心疼嘛
+# HIST_KEEP表示LLM最多使用最近多少轮历史对话记录作为上下文
+
 CTX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "context")
 DOWNLOAD_TIMEOUT = 20
 
@@ -99,10 +107,14 @@ def postAction(action: str, payload: dict):
         print(f"[{time.strftime('%H:%M:%S')}] 发送失败({action}): {e}", flush=True)
         return None
 
+# 发送文本消息
+
 def sendText(targetType: str, targetId, content: str):
     if targetType == "group":
         return postAction("send_group_msg", {"group_id": targetId, "message": content})
     return postAction("send_private_msg", {"user_id": targetId, "message": content})
+
+# 发送文件
 
 def sendFile(targetType: str, targetId, filePath: str, fileName: str = "") -> bool:
     name = fileName or Path(filePath).name
@@ -204,26 +216,29 @@ def downloadSongAndReply(targetType: str, targetId, keyword: str):
     if failed:
         sendText(targetType, targetId, f"有 {len(failed)} 个文件发送失败: {'、'.join(failed)}")
 
-# 原理与点歌功能相似
+# 随机美图/天气预告图 原理与点歌功能相似
 # 另外你可以去配置RndPic模块中的rating...懂的都懂（喜）
 
-def handleRandomPic(targetType: str, targetId):
+def handlePic(targetType: str, targetId, handleType, city=''):
     failMsg = "获取随机美图失败"
-    files = RndPic.fetchRandomPic()
+    tempDir = "TempPic"
+    if handleType == 0:
+        files = RndPic.fetchRandomPic()
+    elif handleType == 1:
+        files = weather.getWeatherByCity(city)
+        failMsg = "获取天气失败"
+        tempDir = "Weather"
     if not files:
         sendText(targetType, targetId, failMsg)
         return
-
-    picDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "TempPic")
+    picDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), tempDir)
     if not os.path.isdir(picDir):
         sendText(targetType, targetId, failMsg)
         return
-
     allFiles = sorted(os.listdir(picDir))
     if not allFiles:
         sendText(targetType, targetId, failMsg)
         return
-
     failed = []
     for name in allFiles:
         path = os.path.join(picDir, name)
@@ -236,9 +251,11 @@ def handleRandomPic(targetType: str, targetId):
         else:
             failed.append(name)
             print(f"[{time.strftime('%H:%M:%S')}] 文件发送失败: {name}", flush=True)
-
     if failed:
         sendText(targetType, targetId, f"有 {len(failed)} 个文件发送失败: {'、'.join(failed)}")
+
+# 指令处理核心函数
+# 依旧石山代码
 
 def handleCommand(event: dict, mtype: str, text: str):
     if mtype == "group":
@@ -249,7 +266,8 @@ def handleCommand(event: dict, mtype: str, text: str):
         userId = targetId
 
     if text.startswith("#功能"):
-        sendText(targetType, targetId, "1、#点歌 <关键字>\n2、#点赞\n3、#随机美图")
+        sendText(targetType, targetId, 
+            "1、#点歌 <关键字>\n2、#点赞\n3、#随机美图\n4、#天气 <城市名称>\n5、#新闻 <可选日期，格式<四位数年份>-<两位数月份>-<两位数天份>（阿拉伯数字）>\n6、#活字印刷 <文字>")
         return
 
     if text.startswith("#点歌"):
@@ -259,6 +277,14 @@ def handleCommand(event: dict, mtype: str, text: str):
             return
         sendText(targetType, targetId, f"正在获取《{keyword}》的歌曲资源，请稍候...")
         downloadSongAndReply(targetType, targetId, f"\"{keyword}\"")
+        return
+
+    if text.startswith("#天气"):
+        keyword = text[len("#天气"):].strip()
+        if not keyword:
+            sendText(targetType, targetId, "用法：#天气 <城市名称>")
+            return
+        handlePic(targetType, targetId, 1, keyword)
         return
 
     if text.startswith("#点赞"):
@@ -278,26 +304,94 @@ def handleCommand(event: dict, mtype: str, text: str):
 
     if text.startswith("#随机美图"):
         sendText(targetType, targetId, "正在获取随机美图（等级：SFW），请稍候...")
-        handleRandomPic(targetType, targetId)
+        handlePic(targetType, targetId, 0)
         return
 
-    sendText(targetType, targetId, "未知指令，目前支持：\n#点歌 <关键字>\n#点赞\n#随机美图")
+    if text.startswith("#活字印刷"):
+        HZYSDir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "HZYS")
+        keyword = text[len("#活字印刷"):].strip()
+        if not keyword:
+            sendText(targetType, targetId, "用法：#活字印刷 <文字>")
+            return
+        try:
+            voicePath = HZYSAPI.convertTextToSound(keyword)
+        except Exception as e:
+            sendText(targetType, targetId, f"活字印刷语音生成失败：{e}")
+            print(f"[{time.strftime('%H:%M:%S')}] 活字印刷语音生成失败: {e}", flush=True)
+            return
+        if not voicePath or not os.path.isfile(voicePath):
+            sendText(targetType, targetId, "活字印刷语音生成失败")
+            return
+
+        # 语音发送的API是与文本发送的API复用的
+        # 但数据结构不一样
+
+        send_msg_type = "send_private_msg"
+        send_msg_dst = "user_id"
+        if targetType == "group":
+            send_msg_type = "send_group_msg"
+            send_msg_dst = "group_id"
+        resp = postAction(send_msg_type, {
+            send_msg_dst: targetId, "message": [
+                {"type": "record", "data": {"file": f"file://{voicePath}"}}
+            ]
+        })
+        try:
+            ok = bool(resp) and json.loads(resp).get("status") == "ok"
+        except Exception:
+            ok = False
+        if ok:
+            print(f"[{time.strftime('%H:%M:%S')}] 活字印刷语音已发送", flush=True)
+            for name in os.listdir(HZYSDir):
+                p = os.path.join(HZYSDir, name)
+                try:
+                    os.remove(p)
+                except OSError as e:
+                    print(f"[{time.strftime('%H:%M:%S')}] 清理失败 {p}: {e}", flush=True)
+        else:
+            print(f"[{time.strftime('%H:%M:%S')}] 活字印刷语音发送失败: {resp}", flush=True)
+            sendText(targetType, targetId, "活字印刷语音发送失败")
+        return
+
+    # 随便找的一个轻量级新闻API网站
+    # 号称60秒看完一天的天下大事
+    # 不过目前貌似只有近两年的新闻数据
+    # 往前就查不到了
+
+    if text.startswith("#新闻"):
+        newsTime = text[len("#新闻"):].strip()
+        if not newsTime:
+            newsTime = time.strftime('%Y-%m-%d')
+        try:
+            req = requests.get(f'https://60s-static.viki.moe/60s/{newsTime}.json', timeout=5)
+            news = req.json()["news"]
+            text = ""
+            for item in news:
+                text += (item + '\n\n')
+            sendText(targetType, targetId, text)
+            print(f"已发送{newsTime}日的新闻")
+        except Exception as e:
+            sendText(targetType, targetId, 
+                f"获取新闻失败：{e}\n如果需要查看指定日期的新闻，请遵循以下格式：\n"
+                "#新闻 <四位数年份>-<两位数月份>-<两位数天份>（阿拉伯数字）\n另外，新闻API也存在数据空白的情况，请谅解")
+            print(f"获取新闻失败：{e}")
+        return
+
+    sendText(targetType, targetId, 
+        "未知指令，目前支持：\n#点歌 <关键字>\n#点赞\n#随机美图\n#天气 <城市名称>\n"
+        "#新闻 <可选日期，格式<四位数年份>-<两位数月份>-<两位数天份>（阿拉伯数字）>")
 
 def handleEvent(event: dict):
     if event.get("post_type") != "message":
         return
-
     mtype = event.get("message_type")
     msg = event.get("message")
     text = extractText(msg)
-
     if not text:
         return
-
     if text.startswith("#"):
         handleCommand(event, mtype, text)
         return
-
     if mtype == "group":
         if not wasAtMe(msg):
             return
@@ -314,9 +408,7 @@ def handleEvent(event: dict):
         label = f"私聊 {targetId}"
     else:
         return
-
     ctx = loadCtx(key)
-
     if ctx["turns"] >= MAX_TURNS:
         ctx["messages"] = []
         ctx["turns"] = 0
@@ -328,10 +420,8 @@ def handleEvent(event: dict):
 
     ctx["turns"] += 1
     ctx["messages"].append({"role": "user", "content": text})
-
     apiMessages = [{"role": "system", "content": SYSTEM_PROMPT}]
     apiMessages += ctx["messages"][-HIST_KEEP:]
-
     try:
         reply = askLLm(apiMessages)
     except Exception as e:
@@ -340,10 +430,8 @@ def handleEvent(event: dict):
         saveCtx(ctx)
         print(f"[{time.strftime('%H:%M:%S')}] {label} AI请求失败: {e}", flush=True)
         return
-
     ctx["messages"].append({"role": "assistant", "content": reply})
     saveCtx(ctx)
-
     p = dict(payload)
     p["message"] = reply
     postAction(action, p)
@@ -359,12 +447,19 @@ def sseLoop():
         "Connection: keep-alive\r\n\r\n"
     )
     s.sendall(req.encode())
+
+    # 将消息队列作为文件流进行读取
+    # 消息队列会由LLBot在后台实时更新
+
     f = s.makefile("rb", buffering=0)
     while True:
         line = f.readline()
         if not line or line == b"\r\n":
             break
     while True:
+
+        # 将消息逐条交给handleEvent函数进行处理
+
         line = f.readline()
         if not line:
             break
