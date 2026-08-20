@@ -74,7 +74,7 @@ pip install requests beautifulsoup4
 
 ### 0. 获取AutoReply脚本文件
 
-请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases/tag/SourceCode) 下载压缩包并解压到任意文件夹下。
+请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases/tag/SourceCode_1.0.1) 下载压缩包并解压到任意文件夹下。
 
 ### 1. 安装并启动 LLBot
 
