@@ -1,6 +1,6 @@
-# 小鲸鱼 QQ 机器人（AutoReply）
+# 小鲸鱼 QQ 机器人
 
-一个基于 [LuckyLilliaBot（LLBot）](https://github.com/LLOneBot/LuckyLilliaBot) 框架和大语言模型（LLM）API 的 QQ 自动回复机器人。
+一个基于[OneBot](https://github.com/botuniverse/onebot)协议和大语言模型（LLM）API 的 QQ 自动回复机器人。
 
 机器人的人设是一只名叫「小鲸鱼」的鲸鱼娘女仆，性格温柔活泼。它可以陪你聊天、帮你点歌、点赞、发随机美图，还能查天气、看新闻、把你的文字合成语音（活字印刷），所有命令以 `#` 开头，无需 @ 机器人也能生效。
 
@@ -25,11 +25,11 @@
 
 - 每个会话（群聊 / 私聊）独立保存上下文，最多保留 **50 轮**，用满后自动重置（会提示「本轮对话已结束，小鲸鱼已重置」）。
 - 每次向 LLM 发送时只携带最近 **30 条**消息，避免超出模型上下文长度。
-- 回复限制在 **256 字**以内，只输出纯文本，不使用 Markdown。
+- 回复通过SYSTEM_PROMPT **软性**限制在 **256 字**以内，只输出纯文本，不使用 Markdown。
 
 ---
 
-## 工作原理
+## 工作原理（以 LLBot 框架为例）
 
 ```
 QQ 客户端
@@ -47,10 +47,12 @@ QQ 客户端
    │  └─► 60s-static.viki.moe（新闻，直接请求）
 ```
 
-- [LLBot](https://github.com/LLOneBot/LuckyLilliaBot) 负责与 QQ 客户端进行底层交互，启动后会在本机 `127.0.0.1:3000` 开放一个仅本机可访问的 HTTP 服务器。
+- [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)负责与 QQ 客户端进行底层交互，启动后会在本机 `127.0.0.1:3000` 开放一个仅本机可访问的 HTTP 服务器。
+- ℹ️ 再次提醒，小鲸鱼实际上可以与**任意**支持[OneBot](https://github.com/botuniverse/onebot)协议的 QQ 消息框架配合使用。**本例程中仅采用 LLBot 框架进行演示**。该项目同样可以**根据实际需要迁移到其他通讯平台上**，比如微信与 Telegram。
 - `AutoReply.py` 通过该服务器的 HTTP API 发送消息 / 点赞 / 上传文件，并通过 SSE（`/_events`）订阅新消息事件。
-- **运行期间 LLBot 服务器绝对不能关闭**，否则机器人会失去与 QQ 的通信通道。SSE 连接意外断开时程序会自动在 3 秒后重连。
+- **运行期间 LLBot（OneBot） 服务器绝对不能关闭**，否则机器人会失去与 QQ 的通信通道。SSE 连接意外断开时程序会自动在 3 秒后重连。
 - 主程序是单线程的 SSE 循环，一次只处理一条消息，无需担心并发时序问题。
+- 由于架构设计使然，小鲸鱼的信息吞吐量较小，仅适合作为个人项目**在较低并发要求的环境下使用**。
 
 ---
 
@@ -74,7 +76,7 @@ pip install requests beautifulsoup4
 
 ### 0. 获取AutoReply脚本文件
 
-请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases/tag/SourceCode_1.0.1) 下载压缩包并解压到任意文件夹下。
+请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases) 下载压缩包并解压到任意文件夹下。
 
 ### 1. 安装并启动 LLBot
 
@@ -86,6 +88,7 @@ pip install requests beautifulsoup4
 
 LLBot 的语音发送功能必须配合 FFmpeg，否则小鲸鱼的活字印刷功能将无法使用。
 请参阅 [相关文档](https://luckylillia.com/guide/ffmpeg) 进行 FFmpeg 配置。
+若采用其他消息框架，请根据实际情况查询相应文档并进行正确配置。
 
 ### 3. 配置 `Config.txt`
 
@@ -256,6 +259,8 @@ E:\QQBot\
 
 - [LuckyLilliaBot（LLBot）框架仓库](https://github.com/LLOneBot/LuckyLilliaBot)
 - [LLBot API 文档](https://luckylillia.com/guide/introduction)
+- [OneBot协议](https://github.com/botuniverse/onebot)
+- [配置 FFmpeg](https://luckylillia.com/guide/ffmpeg)
 - [nekosapi 随机图片 API](https://nekosapi.com)
 - [wttr.in 天气服务](https://wttr.in)
 - [60s 新闻 API](https://60s-static.viki.moe/60s/)
