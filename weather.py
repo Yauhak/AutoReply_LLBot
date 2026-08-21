@@ -6,7 +6,7 @@ def getWeatherByCity(city):
     downloadDir = os.path.join(scriptDir, "Weather")
     os.makedirs(downloadDir, exist_ok=True)
     try:
-        weatherImg = requests.get(f'https://v3.wttr.in/{city.replace(' ', '+')}.png')
+        weatherImg = requests.get(f"https://v3.wttr.in/{city.replace(' ', '+')}.png")
         weatherImg.raise_for_status()
         path = os.path.join(downloadDir, f"{city.replace(' ', '+')}.png")
         with open(path, "wb") as f:
