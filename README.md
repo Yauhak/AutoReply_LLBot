@@ -1,6 +1,6 @@
 # 小鲸鱼 QQ 机器人
 
-一个基于[OneBot](https://github.com/botuniverse/onebot)协议和大语言模型（LLM）API 的 QQ 自动回复机器人。
+一个基于 [OneBot](https://github.com/botuniverse/onebot) 协议和大语言模型（LLM）API 的 QQ 自动回复机器人。
 
 机器人的人设是一只名叫「小鲸鱼」的鲸鱼娘女仆，性格温柔活泼。它可以陪你聊天、帮你点歌、点赞、发随机美图，还能查天气、看新闻、把你的文字合成语音（活字印刷），所有命令以 `#` 开头，无需 @ 机器人也能生效。
 
@@ -47,8 +47,8 @@ QQ 客户端
    │  └─► 60s-static.viki.moe（新闻，直接请求）
 ```
 
-- [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)负责与 QQ 客户端进行底层交互，启动后会在本机 `127.0.0.1:3000` 开放一个仅本机可访问的 HTTP 服务器。
-- ℹ️ 再次提醒，小鲸鱼实际上可以与**任意**支持[OneBot](https://github.com/botuniverse/onebot)协议的 QQ 消息框架配合使用。**本例程中仅采用 LLBot 框架进行演示**。该项目同样可以**根据实际需要迁移到其他通讯平台上**，比如微信与 Telegram。
+- [LLBot](https://github.com/LLOneBot/LuckyLilliaBot) 负责与 QQ 客户端进行底层交互，启动后会在本机 `127.0.0.1:3000` 开放一个仅本机可访问的 HTTP 服务器。
+- ℹ️ 再次提醒，小鲸鱼实际上可以与**任意**支持 [OneBot](https://github.com/botuniverse/onebot) 协议的 QQ 消息框架配合使用。**本例程中仅采用 LLBot 框架进行演示**。该项目同样可以**根据实际需要迁移到其他通讯平台上**，比如微信与 Telegram。
 - `AutoReply.py` 通过该服务器的 HTTP API 发送消息 / 点赞 / 上传文件，并通过 SSE（`/_events`）订阅新消息事件。
 - **运行期间 LLBot（OneBot） 服务器绝对不能关闭**，否则机器人会失去与 QQ 的通信通道。SSE 连接意外断开时程序会自动在 3 秒后重连。
 - 主程序是单线程的 SSE 循环，一次只处理一条消息，无需担心并发时序问题。
@@ -74,9 +74,9 @@ pip install requests beautifulsoup4
 
 ## 安装与配置
 
-### 0. 获取AutoReply脚本文件
+### 0. 获取小鲸鱼 Python 脚本文件
 
-请从 [Releases](https://github.com/Yauhak/AutoReply_LLBot/releases) 下载压缩包并解压到任意文件夹下。
+请从 [Releases](https://github.com/Yauhak/LittleWhale-AutoReply/releases) 下载压缩包并解压到任意文件夹下。
 
 ### 1. 安装并启动 LLBot
 
@@ -260,7 +260,7 @@ E:\QQBot\
 - [LuckyLilliaBot（LLBot）框架仓库](https://github.com/LLOneBot/LuckyLilliaBot)
 - [LLBot API 文档](https://luckylillia.com/guide/introduction)
 - [OneBot协议](https://github.com/botuniverse/onebot)
-- [配置 FFmpeg](https://luckylillia.com/guide/ffmpeg)
+- [为 LLBot 配置 FFmpeg](https://luckylillia.com/guide/ffmpeg)
 - [nekosapi 随机图片 API](https://nekosapi.com)
 - [wttr.in 天气服务](https://wttr.in)
 - [60s 新闻 API](https://60s-static.viki.moe/60s/)
